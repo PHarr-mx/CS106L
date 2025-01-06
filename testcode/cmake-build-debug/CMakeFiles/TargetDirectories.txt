@@ -1,4 +1,0 @@
-/Users/jkxy/CS106L/testcode/cmake-build-debug/CMakeFiles/testcode.dir
-/Users/jkxy/CS106L/testcode/cmake-build-debug/CMakeFiles/L2_1.dir
-/Users/jkxy/CS106L/testcode/cmake-build-debug/CMakeFiles/edit_cache.dir
-/Users/jkxy/CS106L/testcode/cmake-build-debug/CMakeFiles/rebuild_cache.dir
