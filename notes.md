@@ -652,3 +652,456 @@ C++ 标准库提供了几种关联容器（Associative Containers），这些容
 
 # Templates
 
+## Template Function
+
+我们要实现一个函数`minmax`传入两个值，并返回最小值和最大值。
+
+这个还是很好实现的
+
+```cpp
+#include <iostream>
+
+using std::cout;
+
+std::pair<int, int> minmax(int a, int b) {
+    if (a < b) return {a, b};
+    return {b, a};
+}
+
+int main() {
+    auto [min1, max1] = minmax(2, -3);
+    cout << min1 << " " << max1 << "\n";
+    return 0;
+}
+```
+
+然后我们考虑其他类型是否可以执行？
+
+```cpp
+#include <iostream>
+
+using std::cout;
+
+std::pair<int, int> minmax(int a, int b) {
+    if (a < b) return {a, b};
+    return {b, a};
+}
+
+
+int main() {
+    auto [min1, max1] = minmax(2, -3);
+    cout << min1 << " " << max1 << "\n";
+
+    auto [min2, max2] = minmax(2.5, 3.1);
+    cout << min2 << " " << max2 << "\n";
+
+    auto [min3, max3] = minmax('a', 'l');
+    cout << min3 << " " << max3 << "\n";
+
+    return 0;
+}
+```
+
+这依旧是可以执行的，因为浮点型和字符型都可以隐式类型转换位整型，但是结果是不对。
+
+> 这样之所以可以编译，还是因为 "Allow the programmer full control, responsibility, and choice if they want it." 所以编译器认为程序员知道自己在做什么。
+
+但是如果继续新增
+
+```cpp
+#include <iostream>
+
+using std::cout;
+
+std::pair<int, int> minmax(int a, int b) {
+    if (a < b) return {a, b};
+    return {b, a};
+}
+
+
+int main() {
+    auto [min1, max1] = minmax(2, -3);
+    cout << min1 << " " << max1 << "\n";
+
+    auto [min2, max2] = minmax(2.5, 3.1);
+    cout << min2 << " " << max2 << "\n";
+
+    auto [min3, max3] = minmax('a', 'l');
+    cout << min3 << " " << max3 << "\n";
+
+    auto [min4, max4] = minmax("Alice", "Bob");
+    cout << min4 << " " << max4 << "\n";
+
+    return 0;
+}
+```
+
+此时就无法进行编译了，因为字符串不能隐式类型转换为整型。为了解决这个问题我们可以用到 C 语言中的函数重载解决。
+
+```cpp
+#include <iostream>
+
+using std::cout;
+
+std::pair<int, int> minmax(int a, int b) {
+    if (a < b) return {a, b};
+    return {b, a};
+}
+
+std::pair<double, double> minmax(double a, double b) {
+    if (a < b) return {a, b};
+    return {b, a};
+}
+
+std::pair<char, char> minmax(char a, char b) {
+    if (a < b) return {a, b};
+    return {b, a};
+}
+
+std::pair<std::string, std::string> minmax(std::string a, std::string b) {
+    if (a < b) return {a, b};
+    return {b, a};
+}
+
+int main() {
+    auto [min1, max1] = minmax(2, -3);
+    cout << min1 << " " << max1 << "\n";
+
+    auto [min2, max2] = minmax(2.5, 3.1);
+    cout << min2 << " " << max2 << "\n";
+
+    auto [min3, max3] = minmax('a', 'l');
+    cout << min3 << " " << max3 << "\n";
+
+    auto [min4, max4] = minmax("Alice", "Bob");
+    cout << min4 << " " << max4 << "\n";
+
+    return 0;
+}
+```
+
+这样做既消除了编译的警告也可以正确的返回结果，但是我们注意到其实四个函数是非常冗余的。这里我们就可以引出**模板类型**这一概念。
+
+```cpp
+#include <iostream>
+
+using std::cout;
+
+template<typename T>
+std::pair<T, T> minmax(T a, T b) {
+    if (a < b) return {a, b};
+    return {b, a};
+}
+
+int main() {
+    auto [min1, max1] = minmax(2, -3);
+    cout << min1 << " " << max1 << "\n";
+
+    auto [min2, max2] = minmax(2.5, 3.1);
+    cout << min2 << " " << max2 << "\n";
+
+    auto [min3, max3] = minmax('a', 'l');
+    cout << min3 << " " << max3 << "\n";
+
+    auto [min4, max4] = minmax("Alice", "Bob");
+    cout << min4 << " " << max4 << "\n";
+
+    return 0;
+}
+```
+
+这样做，也可以消除警告，并且大多数时候也可以正常的运行，唯独第四个的计算可能出现问题，我这里的结果是
+
+```
+-3 2
+2.5 3.1
+a l
+Bob Alice
+```
+
+这是为什么？因为模板在识别`"Alice"`时，把他识别为`const char *`类型了。此次就会比较两个字符串常量的地址，而不是字典序？
+
+对于这个问题我们可以在调用类型时指明参数的类型来实现。
+
+```cpp
+#include <iostream>
+#include <array>
+
+using std::cout;
+
+template<typename T>
+std::pair<T, T> minmax(T a, T b) {
+    if (a < b) return {a, b};
+    return {b, a};
+}
+
+int main() {
+    auto [min1, max1] = minmax(2, -3);
+    cout << min1 << " " << max1 << "\n";
+
+    auto [min2, max2] = minmax(2.5, 3.1);
+    cout << min2 << " " << max2 << "\n";
+
+    auto [min3, max3] = minmax('a', 'l');
+    cout << min3 << " " << max3 << "\n";
+
+    auto [min4, max4] = minmax<std::string>("Alice", "Bob");
+    cout << min4 << " " << max4 << "\n";
+
+    auto [min5, max5] = minmax<std::array<int, 2>>({2, 4}, {1, 3});
+    cout << min5[0] << " " << min5[1] << " , " << max5[0] << " " << max5[1] << "\n";
+    return 0;
+}
+```
+
+可以注意到，当你指明类型后，编译器就知道了如何进行类型转换，因此你甚至可以传入一些比较奇怪的东西。
+
+关于模板函数，我们在再看下一个例子，这个例子是统计一个集合中某种元素出现的次数。
+
+```cpp
+#include <bits/stdc++.h>
+
+using std::cout;
+
+template<typename T>
+int count(std::vector<T> set, T target) {
+    int cnt = 0;
+    for (size_t i = 0; i < set.size(); i += 1)
+        if (set[i] == target) cnt++;
+    return cnt;
+}
+
+int main() {
+    cout << count({1, 1, 4, 5, 1, 4}, 1);
+    return 0;
+}
+```
+
+对于这个函数，我们默认了`arr`必须是一个`std::vector`才行，我们可以做一个优化。
+
+```cpp
+template<typename containerType, typename dataType>
+int count(const containerType &set, dataType target) {
+    int cnt = 0;
+    for (size_t i = 0; i < arr.size(); i += 1)
+        if (set[i] == target) cnt++;
+    return cnt;
+}
+```
+
+这样的话，理论上我们可以接受任何一种容器，但是并不是所有的容器都可以用`[]`进行下标访问。因此我们可以用迭代器实现。
+
+```cpp
+template<typename ContainerType, typename DataType>
+int count(const ContainerType &set, DataType target) {
+    int cnt = 0;
+    for(auto iter = set.begin; iter != set.end; iter += 1)
+        if(*iter == target) cnt ++;
+    return cnt;
+}
+```
+
+但是如果我们不需要整个集合的情况，我们改怎么办呢？可以不传入容器，而是传入两个类型的迭代器。
+
+```cpp
+template<typename InputIterator, typename DataType>
+int count(const InputIterator &begin, const InputIterator end , DataType target) {
+    int cnt = 0;
+    for(auto iter = begin; iter != end; iter += 1)
+        if(*iter == target) cnt ++;
+    return cnt;
+}
+```
+
+但是这个又对迭代器提出了要求，必须是Random access类型才行。因此我们可以在做使用`++`
+
+```cpp
+#include <iostream>
+#include <set>
+#include <vector>
+#include <list>
+
+using std::cout;
+
+template<typename InputIterator, typename DataType>
+int count(const InputIterator &begin, const InputIterator end, DataType target) {
+    int cnt = 0;
+    for (auto iter = begin; iter != end; iter++)
+        if (*iter == target) cnt++;
+    return cnt;
+}
+
+int main() {
+    std::set<int> a{1, 1, 4, 5, 1, 4};
+    std::vector<int> b{1, 1, 4, 5, 1, 4};
+    std::list<int> c{1, 1, 4, 5, 1, 4};
+    cout << count(a.begin(), a.end(), 1) << "\n";
+    cout << count(b.begin(), b.end(), 1) << "\n";
+    cout << count(c.begin(), c.end(), 1) << "\n";
+    return 0;
+}
+```
+
+这也是采用模板的一个重要作用就是可以实现**泛型编程**，对于最终的版本我们对于模板参数要求已经降低到了只需要保证`DataType`可以用`==`进行比较即可。
+
+我们再来观察这个函数，这个函数目前实现的功能是查询集合中等于`target`的元素个数，我能否实现一些其他的功能？当然可以，模板参数不仅可以传入变量，也可以把函数传入进去。
+
+```cpp
+#include <iostream>
+#include <set>
+#include <vector>
+#include <list>
+
+using std::cout;
+
+template<typename InputIterator, typename Predicate>
+int count(const InputIterator &begin, const InputIterator end, Predicate pred) {
+    int cnt = 0;
+    for (auto iter = begin; iter != end; iter++)
+        if (pred(*iter)) cnt++;
+    return cnt;
+}
+
+bool lessThan3(int val) {
+    return val < 3;
+}
+
+bool lessThan4(int val) {
+    return val < 4;
+}
+
+bool lessThan5(int val) {
+    return val < 5;
+}
+
+int main() {
+    std::vector<int> a{1, 1, 4, 5, 1, 4, 1, 9, 1, 9, 8, 1, 0};
+    cout << count(a.begin(), a.end(), lessThan3) << "\n";
+    cout << count(a.begin(), a.end(), lessThan4) << "\n";
+    cout << count(a.begin(), a.end(), lessThan5) << "\n";
+    return 0;
+}
+```
+
+这样就可以在不修改`count`函数的情况下修改`count`的功能，但是我们看`lessThan3,lessThan4,lessThan5`三个函数其实是大同小异的，有没有什么方法增加其通用性？当然我们可以把`lessThan`函数设计为两个参数，但是这样的话对于`count`函数就失去了通用性。
+
+对于这个问题我们当然可以这样实现
+
+```cpp
+int limit;
+bool lessThanLimit(int val) {
+    return val < limit;
+}
+```
+
+把`limit`作为一个全局变量，然后在每次调用`count`前修改`limit`的值即可。但是这样又会牵扯到一个问题，`limit`只在`lessThanlimit`中使用，作为全局变量不合适。
+
+对于这个问题，我们可以用**Lambda**解决。
+
+```cpp
+int main() {
+    std::vector<int> a{1, 1, 4, 5, 1, 4, 1, 9, 1, 9, 8, 1, 0};
+    int limit = 0;
+    auto lessThanLimit = [&limit](int val) {
+        return val < limit;
+    };
+    limit = 3;
+    cout << count(a.begin(), a.end(), lessThanLimit) << "\n";
+    limit = 4;
+    cout << count(a.begin(), a.end(), lessThanLimit) << "\n";
+    limit = 5;
+    cout << count(a.begin(), a.end(), lessThanLimit) << "\n";
+    return 0;
+}
+```
+
+当然了，其实这个问题我们可以用**非类型模板参数**解决。
+
+```cpp
+template<int limit>
+bool lessThanLimit(int val) {
+    return val < limit;
+}
+
+int main() {
+    std::vector<int> a{1, 1, 4, 5, 1, 4, 1, 9, 1, 9, 8, 1, 0};
+    cout << count(a.begin(), a.end(), lessThanLimit<3>) << "\n";
+    cout << count(a.begin(), a.end(), lessThanLimit<4>) << "\n";
+    cout << count(a.begin(), a.end(), lessThanLimit<5>) << "\n";
+    return 0;
+}
+```
+
+要注意的是，非类型模板参数只能接受常量，也就是必须在编译时就已知值才行。 
+
+# OOP
+
+## Const函数
+
+- **不会修改对象状态**：`const` 成员函数承诺不会修改对象的非静态成员变量。如果函数尝试修改非静态成员变量，编译器会报错。
+- **可以被 const 对象调用**：只有 `const` 成员函数可以被 `const` 对象调用。非 `const` 对象也可以调用 `const` 函数，但 `const` 对象不能调用非 `const` 函数。
+- **不会调用非 const 成员函数**：`const` 函数内部不可以调用非 `const` 成员函数，除非非 `const` 函数指定了 `mutable` 成员变量。
+
+关于`const`函数有两种
+
+```cpp
+void f(const int &x) {
+    cout << x << "\n";
+}
+```
+
+这里的 `const` 表示参数 `x` 是一个 `const` 引用，即函数 `f` 不能修改 `x` 的值。
+
+```cpp
+class myClass {
+public:
+    int x;
+
+    void f() const {
+        cout << x << "\n";
+    }
+};
+```
+
+这个`const` 限定符表示该成员函数不会修改对象的状态（即不会修改类的非静态成员变量）。如果函数尝试修改成员变量（如 `x`），编译器会报错。
+
+## Const Pointer 
+
+```cpp
+int x;
+const int y = 1;
+// constant pointer to a non-constant int
+int *const p1 = &x;
+int *const p2 = &y;
+// non-constant pointer to a constant int
+const int *p2 = &y;
+int const *p3 = &x;
+// constant pointer to a constant int
+const int *const p4 = &x;
+int const *const p5 = &y;
+```
+
+- **数据是否可变**：`p1` 指向的数据可以被修改，而其他指针（`p2`、`p3`、`p4`、`p5`）指向的数据不能被修改。
+- **指针是否可变**：
+    - `p1` 是常量指针，不能重新指向。
+    - `p2` 和 `p3` 是非常量指针，可以重新指向。
+    - `p4` 和 `p5` 是常量指针，不能重新指向。
+- **语法上的差异**：
+    - `const int *p` 和 `int const *p` 是等价的。
+    - `int *const p` 表示指针本身是常量。
+
+值得注意的是`int *const p6 = &y;`是无法编译的，因为`y`是`const int` 但是`p6`只能指向非常量变量。
+
+## Const Iterators
+
+```cpp
+vector<int> a{1,23};
+const vector<int>::iterator iter1 = a.begin();
+iter1 ++;// doesnt compile
+*iter1 = 4;// compile
+
+vector<int>::const_iterator iter2 = a.begin();
+iter2 ++;// compile
+*iter2 = 4;// doesnt compile
+```
+
