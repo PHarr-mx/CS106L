@@ -1105,3 +1105,182 @@ iter2 ++;// compile
 *iter2 = 4;// doesnt compile
 ```
 
+# Operators
+
+```cpp
+vector<string> a{"Hello", "World"};
+cout << a[0];
+a[1] += "1";
+```
+
+我看先来看这个简单的例子，这个例子中用到了运算符，运算符实际上可以理解为成员函数，因此这里的写法实际上是简写。
+
+```cpp
+vector<string> a{"Hello", "World"};
+cout.operator<<(a.operator[](0));
+a.operator[](1) += "1";
+```
+
+上面说到了，运算符实际上就是函数，因此也可以这样写
+
+```cpp
+vector<string> a{"Hello", "World"};
+operator<<(cout, operator[](a, 1));
+operator+=(operator[](a, 1), "!");
+```
+
+我们再来看一个下面的例子
+
+```cpp
+#include <bits/stdc++.h>
+
+using std::cout;
+using std::vector;
+using std::string;
+
+using VecStr = vector<string>;
+
+VecStr &operator+=(VecStr &vs, const string &element) {
+    vs.push_back(element);
+    return vs;
+}
+
+int main() {
+    VecStr s;
+    (((s += "Hello") += " ") += "World") += "!";
+    for (auto i: s)cout << i;
+    cout << "\n";
+    return 0;
+}
+```
+
+# Special Member Function
+
+这里学习了两个特殊的函数 copy constructor 和  copy assignment。
+
+```cpp
+class String {
+private:
+    char* data;
+public:
+    // 拷贝构造函数（初始化新对象）
+    String(const String& other) {
+        data = new char[strlen(other.data) + 1];
+        strcpy(data, other.data);
+    }
+
+    // 拷贝赋值操作符（修改已存在对象）
+    String& operator=(const String& other) {
+        if (this != &other) { // 处理自赋值
+            delete[] data;    // 释放旧资源
+            data = new char[strlen(other.data) + 1];
+            strcpy(data, other.data);
+        }
+        return *this;
+    }
+
+    ~String() { delete[] data; } // 析构函数
+};
+```
+
+- **拷贝构造函数**：创建新对象时初始化其状态。
+- **拷贝赋值操作符**：修改已存在对象的状态，需处理自赋值和资源释放。
+
+# Move
+
+*l-value和r-value只是两个简化的模型*
+
+- **l-value** 是一个具有名称（身份）的表达式。
+    - 可以使用取地址运算符（`&var`）找到其地址。
+    - 可以出现在赋值语句左边或右边的表达式。
+- **r-value** 是一个没有名称（身份）的表达式。
+    - 临时值。
+    - 不能使用取地址运算符（`&var`）找到其地址。
+    - 只能出现在赋值语句右边的表达式。
+
+下面再看一些简单的例子
+
+```cpp
+int val = 2; // val is l-value, 2 is r-value
+int *ptr = 0x2248837;// *ptr is l-value, 0x2248837 is r-value
+
+auto v3 = v1 + v2; // v3, v1, v2 is l-value, but v1 + v2 is r-value
+size_t size = v3.size(); // size is l-value, v3.size() is r-value
+v1[1] = 4 * i; // v1[1] is l-value, 4 * i is r-value
+ptr = &val; // &val is r-value
+v1[2] = *ptr; // *ptr is l-value
+```
+
+为什么`v3.size()`是r-value？因为`size()`的返回值是`size_t`不是`size_t&`。同理`v1[1]`是l-value是因为`operator[]`的返回值是`int&`。
+
+然后再看两个例子
+
+```cpp
+auto& v2 = v1; // v2 is l-value reference
+auto&& v3 = v1 + v2; // v3 is r-value reference
+```
+
+`v2`是左值引用，因为`v1`是左值，所以访问`v2`实际上就是访问`v1`
+
+`v3`是右值引用，`v1 + v2`是右值，因此访问`v3`是访问计算`v1 + v2`产生的临时变量，这样做可以延长临时变量的生存周期，减小内存消耗。
+
+正常情况左值引用是不能引用到右值的。但是常量左值引用除外。
+
+```cpp
+const auto& v4 = v1 + v2;
+```
+
+因为左值引用对于这如果修改了`v1`或`v2`的值，`v4`的值也会被修改。但是因为是常量所以`v4`的值是不能被改变的。
+
+`r-value`只是一个临时值，用完后就会被立即销毁，我们是否可以通过利用`r-value` 来提高效率？
+
+因此对于刚才的`String`我可以写出这样两个函数，如果构造函数的值或赋值的值是右值我就可以直接移动指针。
+
+```cpp
+String::String(String &&other) : data(other.data) { // Move Constuctor
+    other.data = nullptr;
+}
+
+String &String::operator=(String &&other) { // Move Assignment
+    if (this != &other) {
+        delete[] data;
+        ata = other.data;
+        other.data = nullptr;
+    }
+    return *this;
+}
+```
+
+这样写会减少很多内存的浪费。当然了这里用到的是指针可以直接赋值。但如果是类，我们可以使用`std::move`函数来实现。
+
+```cpp
+class VecStr {
+private:
+    std::vector<std::string> data;
+public:
+    VecStr(VecStr &&other);
+
+    VecStr &operator=(VecStr &&other);
+};
+
+VecStr::VecStr(VecStr &&other) : data(std::move(other)) {}
+
+VecStr &VecStr::operator=(VecStr &&other) {
+    if (this != &other) {
+        data = std::move(other.data);
+    }
+    return *this;
+}
+```
+
+因此我也可以写出一个不增加额外内存消耗的`swap`函数
+
+```cpp
+template<typename T>
+void swap(T &a, T &b) {
+    T temp = std::move(a);
+    a = std::move(b);
+    b = std::move(temp);
+}
+```
+
