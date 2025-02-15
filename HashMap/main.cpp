@@ -86,7 +86,7 @@ std::set<KeyType> find_keys(const HashMap<KeyType, MappedTyped> &map) {
 //this will find and print which lecturer lectured first, and how long after them the
 //second lecturer lectured
 //这将找到并打印哪位讲师先授课，以及第二位讲师在他们之后多久开始授课。
-void print_difference(const HashMap<string, int> &lecturer_record, string lecturer1, string lecturer2) {
+void print_difference(const HashMap<string, int> &lecturer_record, const string &lecturer1, const string &lecturer2) {
     int year1 = lecturer_record.at(lecturer1);
     int year2 = lecturer_record.at(lecturer2);
     if (year1 < year2) {

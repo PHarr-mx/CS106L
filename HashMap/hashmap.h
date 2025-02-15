@@ -17,9 +17,9 @@
 /*
 * Template class for a HashMap
 *
-* K = key type
-* M = mapped type
-* H = hash function type used to hash a key; if not provided, defaults to std::hash<K>
+* K = key type 键值类型
+* M = mapped type 映射值类型
+* H = hash function type used to hash a key; if not provided, defaults to std::hash<K> 哈希函数
 *
 * Notes: When dealing with the Stanford libraries, we often call M the value
 * (and maps store key/value pairs).
@@ -41,7 +41,7 @@
 *           The const and reference are not required, but key cannot be modified in function.
 *      - K and M must be regular (copyable, default constructible, and equality comparable).
 */
-template <typename K, typename M, typename H = std::hash<K>>
+template<typename K, typename M, typename H = std::hash<K>>
 class HashMap {
 public:
     /*
@@ -52,7 +52,7 @@ public:
     *      HashMap::value_type val = {3, "Avery"};
     *      map.insert(val);
     */
-    using value_type = std::pair<const K, M>;
+    using value_type = std::pair<const K, M>; // 别名，主要是为了与 STL 库保持一致
 
     /*
      * Alias for the iterator type. Recall that it's impossible for an external client
@@ -83,7 +83,13 @@ public:
      * This allows the HashMapIterators to see the private members, which is
      * important because the iterator needs to know what element it is pointing to.
      */
+    /*
+     * 声明 HashMapIterator 类是 HashMap 类的友元类。
+     * 这使得 HashMapIterator 可以访问 HashMap 的私有成员，这是非常重要的，
+     * 因为迭代器需要知道它所指向的元素是什么。
+     */
     friend class HashMapIterator<HashMap, false>;
+
     friend class HashMapIterator<HashMap, true>;
 
     /*
@@ -99,26 +105,25 @@ public:
     HashMap();
 
     /*
-    * Constructor with bucket_count and hash function as parameters.
+    * 构造函数，接受 bucket_count（桶的数量）和哈希函数作为参数。
     *
-    * Creates an empty HashMap with a specified initial bucket_count and hash funciton.
-    * If no hash function provided, default value of H is used.
+    * 创建一个空的 HashMap，具有指定的初始 bucket_count 和哈希函数。
+    * 如果未提供哈希函数，则使用 H 的默认值。
     *
-    * Usage:
-    *      HashMap(10) map;
-    *      HashMap map(10, [](const K& key) {return key % 10; });
-    *      HashMap map{10, [](const K& key) {return key % 10; }};
+    * 使用示例：
+    *      HashMap(10) map;  // 使用默认的哈希函数
+    *      HashMap map(10, [](const K& key) { return key % 10; });  // 自定义哈希函数
+    *      HashMap map{10, [](const K& key) { return key % 10; }};  // 使用花括号初始化
     *
-    * Complexity: O(B), B = number of buckets
+    * 时间复杂度：O(B)，其中 B = 桶的数量
     *
-    * Notes : what is explicit? Explicit specifies that a constructor
-    * cannot perform implicit conversion on the parameters, or use copy-initialization.
-    * That's good, as nonsense like the following won't compile:
+    * 注意：什么是 explicit？ explicit 指定构造函数不能对参数进行隐式类型转换，或使用拷贝初始化。
+    * 这是一个很好的特性，因为以下这种无意义的代码将无法编译：
     *
-    * HashMap<int, int> map(1.0);  // double -> int conversion not allowed.
-    * HashMap<int, int> map = 1;   // copy-initialization, does not compile.
+    * HashMap<int, int> map(1.0);  // 不允许 double 转换为 int
+    * HashMap<int, int> map = 1;   // 拷贝初始化，无法编译。
     */
-    explicit HashMap(size_t bucket_count, const H& hash = H());
+    explicit HashMap(size_t bucket_count, const H &hash = H());
 
     /*
     * Destructor.
@@ -211,7 +216,7 @@ public:
     * Since contains feels more natural to students who've used the Stanford libraries
     * and will be available in the future, we will implement map.contains(key).
     */
-    bool contains(const K& key);
+    bool contains(const K &key);
 
     /*
     * Returns a l-value reference to the mapped value given a key.
@@ -232,7 +237,9 @@ public:
     * if a key is not found. Instead, it will create a K/M pair for that key with a default
     * mapped value. This function is also not const-correct, which you will fix in milestone 2.
     */
-    M& at(const K& key);
+    M &at(const K &key);
+
+    const M &at(const K &key) const;
 
     /*
     * Removes all K/M pairs the HashMap.
@@ -265,7 +272,7 @@ public:
      *
      * Complexity: O(1) amortized average case, O(N) worst case, N = number of elements
      */
-    iterator find(const K& key);
+    iterator find(const K &key);
 
     /*
     * Inserts the K/M pair into the HashMap, if the key does not already exist.
@@ -286,7 +293,7 @@ public:
     *
     * Complexity: O(1) amortized average case
     */
-    std::pair<iterator, bool> insert(const value_type& value);
+    std::pair<iterator, bool> insert(const value_type &value);
 
     /*
     * Erases a K/M pair (if one exists) corresponding to given key from the HashMap.
@@ -303,7 +310,7 @@ public:
     * Notes: a call to erase should maintain the order of existing iterators,
     * other than iterators to the erased K/M element.
     */
-    bool erase(const K& key);
+    bool erase(const K &key);
 
     /*
     * Erases the K/M pair that pos points to.
@@ -364,7 +371,7 @@ public:
      *
      * Usage:
      *      auto iter = cmap.begin();
-     */    
+     */
     const_iterator begin() const;
 
     /*
@@ -375,6 +382,8 @@ public:
      *      while (iter != map.end()) {...}
      */
     iterator end();
+
+    const_iterator end() const;
 
 
     /*
@@ -413,8 +422,8 @@ public:
      *
      * Complexity: O(N), where N = std::distance(first, last);
      */
-    template <typename InputIt>
-    HashMap(InputIt first, InputIt last, size_t bucket_count = kDefaultBuckets, const H& hash = H());
+    template<typename InputIt>
+    HashMap(InputIt first, InputIt last, size_t bucket_count = kDefaultBuckets, const H &hash = H());
 
     /*
      * Initializer list constructor
@@ -434,7 +443,7 @@ public:
      *
      * Also, you should check out the delegating constructor note in the .cpp file.
      */
-    HashMap(std::initializer_list<value_type> init, size_t bucket_count = kDefaultBuckets, const H& hash = H());
+    HashMap(std::initializer_list<value_type> init, size_t bucket_count = kDefaultBuckets, const H &hash = H());
 
     /*
      * Indexing operator
@@ -450,7 +459,7 @@ public:
      *
      * Complexity: O(1) average case amortized plus complexity of K and M's constructor
      */
-    M& operator[](const K& key);
+    M &operator[](const K &key);
 
     /* Milestone 2 headers (you need to declare these) */
     // TODO: declare headers for copy constructor/assignment, move constructor/assignment
@@ -470,7 +479,7 @@ private:
     */
     struct node {
         value_type value;
-        node* next;
+        node *next;
 
         /*
         * Constructor with default values, so even if you forget to set next to nullptr it'll be fine.
@@ -478,8 +487,8 @@ private:
         * Usage:
         *      node* new_node = node({key, mapped}, next_ptr);
         */
-        node(const value_type& value = value_type(), node* next = nullptr) :
-            value(value), next(next) {}
+        node(const value_type &value = value_type(), node *next = nullptr) :
+                value(value), next(next) {}
     };
 
     /*
@@ -490,7 +499,7 @@ private:
     * Usage:
     *      auto& [prev, curr] = node_pair{nullptr, new node()};
     */
-    using node_pair = std::pair<typename HashMap::node*, typename HashMap::node*>;
+    using node_pair = std::pair<typename HashMap::node *, typename HashMap::node *>;
 
     /*
     * Finds the node N with given key, and returns a node_pair consisting of
@@ -516,7 +525,7 @@ private:
     *
     * Hint: on the assignment, you should NOT need to call this function.
     */
-    node_pair find_node(const K& key) const;
+    node_pair find_node(const K &key) const;
 
     /*
     * Finds the first bucket in _buckets_array that is non-empty.
@@ -530,7 +539,7 @@ private:
     *
     * Hint: on the assignment, you should NOT need to call this function.
     */
-    iterator make_iterator(node* curr);
+    iterator make_iterator(node *curr);
 
     /* Private member variables */
 
@@ -561,7 +570,7 @@ private:
     *      node* ptr = _buckets_array[index];          // _buckets_array is array of node*
     *      const auto& [key, mapped] = ptr->value;     // each node* contains a value that is a pair
     */
-    std::vector<node*> _buckets_array;
+    std::vector<node *> _buckets_array;
 
     /*
     * A constant for the default number of buckets for the default constructor.

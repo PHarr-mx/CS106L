@@ -1092,6 +1092,28 @@ int const *const p5 = &y;
 
 值得注意的是`int *const p6 = &y;`是无法编译的，因为`y`是`const int` 但是`p6`只能指向非常量变量。
 
+分析以下代码中`const`的作用
+
+```cpp
+const int * const myClassmethod(const int * const & pararm) const;
+```
+
+- 参数部分`const int * const &pararm` 
+
+    - `const int *`表示指针指向了一个`const int`
+    - `const`表示指针是`const`类型，不能被修改
+
+- 返回值部分`const int * const`
+
+    - `const int *` 返回值指针指向`const int`
+    - `const`表示指针是`const`类型
+
+- 成员函数`const`
+
+    - 成员函数声明末尾的 `const` 表示该函数不会修改类的任何非静态成员变量
+
+    参数中的`&`，表示的是参数是传引用。
+
 ## Const Iterators
 
 ```cpp
@@ -1282,5 +1304,350 @@ void swap(T &a, T &b) {
     a = std::move(b);
     b = std::move(temp);
 }
+```
+
+# Interface
+
+```cpp
+class Drink {
+public:
+    virtual void make() = 0;
+};
+
+class Tea : public Drink {
+public:
+    void make() override {
+        return;
+    }
+};
+```
+
+由于C++中没有接口这个概念，因此如果要实现类似Java的接口可以采用这种方法实现。
+
+首先定义了一个基类`Drink`，这个类包含了一个**纯虚函数**`make()`，因此`Dirnk`不能直接实例化，并且所有派生类都必须实现`make()`。
+
+什么是纯虚函数？	
+
+- **纯虚函数**是基类中声明但**不提供具体实现**的虚函数。
+- **语法**：在虚函数声明末尾添加 `= 0`。
+- **抽象类**：包含纯虚函数的类称为**抽象类**，不能直接实例化。
+- **派生类责任**：派生类必须实现所有基类的纯虚函数，否则自身也会成为抽象类。
+- **可选的基类实现**：纯虚函数可以有默认实现（但派生类仍需显式重写）。
+
+与普通虚函数的区别
+
+| **特性** | **纯虚函数**               | **普通虚函数**                 |
+| :------- | :------------------------- | :----------------------------- |
+| 实现要求 | 基类无实现，派生类必须重写 | 基类有默认实现，派生类可选重写 |
+| 类性质   | 使类成为抽象类             | 普通类（可直接实例化）         |
+| 语法     | `virtual void func() = 0;` | `virtual void func();`         |
+| 用途     | 定义强制接口规范           | 提供可扩展的默认行为           |
+
+`override` 的作用
+
+- **明确意图** ：它明确告知编译器，当前函数的目标是覆盖基类的虚函数。如果基类中没有对应的虚函数（例如拼写错误或参数列表不匹配），编译器会报错。
+- **防止拼写错误** ：避免因为函数名称拼写错误或参数列表不匹配而未覆盖基类函数的问题。例如：
+    - 如果基类的虚函数是 `virtual void print();`，而派生类中写成 `void prin() override;`，编译器会报错，因为基类中没有 `prin()` 虚函数。
+
+`class Tea : public Drink` 中的 `public` 是继承访问修饰符，用于指定基类 `Drink` 中成员在派生类 `Tea` 中的可见性。
+
+- **`public` 继承**：
+    - 基类 `Drink` 中的 **`public` 成员** 在派生类 `Tea` 中仍然是 **`public`**。
+    - 基类 `Drink` 中的 **`protected` 成员** 在派生类 `Tea` 中仍然是 **`protected`**。
+
+- **`protected` 继承**：
+    - 基类 `Drink` 中的 **`public` 成员** 在派生类 `Tea` 中变为 **`protected`**。
+    - 基类 `Drink` 中的 **`protected` 成员** 在派生类 `Tea` 中仍然是 **`protected`**。
+    - 外部无法通过 `Tea` 的对象或指针访问 `make()` 方法。
+- **`private` 继承**：
+    - 基类 `Drink` 中的 **`public` 和 `protected` 成员** 在派生类 `Tea` 中变为 **`private`**。
+    - 外部无法通过 `Tea` 的对象或指针访问 `make()` 方法。
+
+为什么要有虚函数，C++是可以对非虚函数进行重写的。
+
+```cpp
+class Drink {
+public:
+    void make() {
+        cout << "Drink" << "\n";
+        return;
+    };
+};
+
+class Tea : public Drink {
+public:
+    void make() {
+        cout << "Tea\n";
+        return;
+    }
+};
+
+int main() {
+    Drink drink;
+    Tea tea;
+
+    drink.make();
+    tea.make();
+
+    Drink *ptr1 = &drink;
+    Drink *ptr2 = &tea;
+
+    ptr1->make();
+    ptr2->make();
+
+    return 0;
+}
+```
+
+`ptr2`指向`tea`，但是这样做只能调用基类的`make()`函数。
+
+| **场景**     | **非虚函数**                     | **虚函数**                                  |
+| :----------- | :------------------------------- | :------------------------------------------ |
+| **调用方式** | 静态绑定（编译时决定）           | 动态绑定（运行时决定）                      |
+| **多态支持** | ❌ 无法通过基类指针调用派生类实现 | ✅ 支持基类接口调用不同派生类的实现          |
+| **性能开销** | 无额外开销                       | 虚函数表查找的微小开销                      |
+| **设计意图** | 提供固定实现，不希望被派生类修改 | 定义可扩展的接口，强制/允许派生类自定义行为 |
+
+下面这个例子综合了目前学过的所有有关继承的知识。
+
+```cpp
+#include <iostream>
+
+using std::cin;
+using std::cout;
+
+class Drink {
+public:
+    Drink() = default; // 显式声明默认构造函数
+
+    Drink(const Drink &drink) = delete; // 禁用拷贝构造函数
+
+    Drink(std::string flavor) : flavor(flavor) {}
+
+    virtual void make() = 0; // 纯虚函数
+
+    virtual void foo() { // 虚函数
+        cout << "Drink " << flavor << "\n";
+    }
+
+    ~Drink() = default; // 显式声明默认析构函数
+
+private:
+    std::string flavor;
+};
+
+class Tea : public Drink {
+public:
+    Tea() = default;
+
+    Tea(std::string flavor) : Drink(flavor) {}
+
+    virtual void make() override { // 对父类的make函数重写，并且允许之类继续重写但不强制要求
+        cout << "made from Tea class\n";
+    }
+
+    void foo() override {
+        Drink::foo(); // 显式调用父类版本
+        cout << "Tea\n";
+    }
+
+    ~Tea() = default;
+};
+
+int main() {
+    Tea t("red");
+    t.foo();
+    t.make();
+    t.Drink::foo(); // 直接访问父类的foo函数
+}
+```
+
+# Template Class
+
+基本语法
+
+```cpp
+template <typename T> // 或者 template <class T>
+class Box {
+    // 类成员和方法的定义，可以使用 T 作为类型占位符
+private:
+    T content;
+public:
+    Box(T value) : content(value) {}
+    T getContent() { return content; }
+};
+```
+
+模板实例化
+
+```cpp
+Box<int> intBox(42);        // T 被替换为 int
+Box<std::string> strBox("Hello"); // T 被替换为 string
+```
+
+多类型参数
+
+```cpp
+template <typename T, typename U>
+class Pair {
+public:
+    T first;
+    U second;
+    Pair(T a, U b) : first(a), second(b) {}
+};
+
+Pair<int, double> p1(10, 3.14);
+Pair<std::string, bool> p2("key", true);
+```
+
+非类型模板参数
+
+```cpp
+template <typename T, int N>
+class Array {
+private:
+    T data[N];
+public:
+    T& operator[](int index) { return data[index]; }
+};
+
+Array<double, 5> arr; // 创建一个大小为 5 的 double 数组
+```
+
+模板特化
+
+```cpp
+// 通用模板
+template <typename T>
+class Printer {
+public:
+    void print(T value) { std::cout << value << std::endl; }
+};
+
+// 特化为 bool 类型
+template <>
+class Printer<bool> {
+public:
+    void print(bool value) { 
+        std::cout << (value ? "true" : "false") << std::endl; 
+    }
+};
+```
+
+## typename 和 class 的区别
+
+在C++17 之前的版本：有当声明**模板模板参数**时**必须使用**`class`
+
+```cpp
+// 定义一个接受模板模板参数的类
+template <
+    template <class T> class Container  // 正确：使用 class（兼容所有标准）
+>
+class MyClass {
+    Container<int> data;  // 使用模板模板参数实例化
+};
+
+// C++17 起也可以用 typename（但部分编译器可能不完全支持）
+template <
+    template <typename T> typename Container  // C++17 允许
+>
+class MyClassV2 { /* ... */ };
+```
+
+## C++20 concept 
+
+在C++20 中引入了`concept`概念以在编译期检查模板实参是否满足指定的约束。
+
+先看这个例子
+
+```cpp
+template<typename T>
+T foo(T a) {
+    return ++a;
+}
+```
+
+这个例子其实对`a`是限制的，即必须要求`a`必须有`operator++`。但这个实际上是隐式要求，只有当编译的时候才能体现出来。为了方便介绍，我们先强制要求为整型。
+
+我们可以先用`concept` 定义约束
+
+```cpp
+template<typename T>
+concept integral = std::is_integral<T>::value;
+```
+
+`std::is_integral`是一个**类型特征**，可以判断一个值是否是整型。如果要知道结果就要调用`value`，其返回值是一个`bool`类型。
+
+| 特征名称                   | 功能描述                                       | 示例                                                |
+| -------------------------- | ---------------------------------------------- | --------------------------------------------------- |
+| `std::is_integral`         | 检查类型是否为整数类型（如 `int`, `long` 等）  | `std::is_integral<int>::value == true`              |
+| `std::is_floating_point`   | 检查类型是否为浮点类型（如 `float`, `double`） | `std::is_floating_point<float>::value == true`      |
+| `std::is_arithmetic`       | 检查类型是否为算术类型（整数或浮点）           | `std::is_arithmetic<int>::value == true`            |
+| `std::is_same`             | 检查两个类型是否相同                           | `std::is_same<int, int>::value == true`             |
+| `std::is_const`            | 检查类型是否为常量类型                         | `std::is_const<const int>::value == true`           |
+| `std::is_volatile`         | 检查类型是否为易失性类型                       | `std::is_volatile<volatile int>::value == true`     |
+| `std::is_pointer`          | 检查类型是否为指针类型                         | `std::is_pointer<int*>::value == true`              |
+| `std::is_reference`        | 检查类型是否为引用类型                         | `std::is_reference<int&>::value == true`            |
+| `std::is_lvalue_reference` | 检查类型是否为左值引用类型                     | `std::is_lvalue_reference<int&>::value == true`     |
+| `std::is_rvalue_reference` | 检查类型是否为右值引用类型                     | `std::is_rvalue_reference<int&&>::value == true`    |
+| `std::remove_const`        | 去除类型的常量限定符                           | `typename std::remove_const<const int>::type`       |
+| `std::remove_volatile`     | 去除类型的易失性限定符                         | `typename std::remove_volatile<volatile int>::type` |
+| `std::remove_reference`    | 去除类型的引用限定符                           | `typename std::remove_reference<int&>::type`        |
+| `std::remove_cv`           | 去除类型的常量和易失性限定符                   | `typename std::remove_cv<const volatile int>::type` |
+
+- **`_v` 后缀**：C++17 引入的模板变量，用于直接获取类型特征的布尔值。
+    例如：`std::is_integral_v<T>` 等价于 `std::is_integral<T>::value`。
+- **`_t` 后缀**：用于获取类型特征的别名。
+    例如：`std::remove_const_t<const int>` 等价于 `int`。
+
+在定义好约束后，我们可以用以下方法要求`T`满足这个约束，这四种写法是等价的。
+
+```cpp
+template<integral T>
+T foo1(T a) {
+    return ++a;
+}
+
+integral auto foo2(integral auto a) {
+    return ++a;
+}
+
+template<typename T>
+T foo3(T a) requires integral<T> {
+    return ++a;
+}
+
+template<typename T>
+requires integral<T>
+T foo4(T a) {
+    return ++a;
+}
+```
+
+当然对于约束，我们也可以进行嵌套
+
+```cpp
+template<typename T>
+concept signed_integral = integral<T> and std::is_signed<T>::value;
+
+template<typename T>
+concept unsigned_integral = integral<T> && std::is_unsigned_v<T>;
+```
+
+当然了对于上述的要求我们也可自己实现一些要求，比如
+
+```cpp
+template<typename T>
+concept AddAble = requires(T a, T b) { a + b; }; // T 支持加法
+
+template<typename T, typename U>
+concept check1 = requires(T a, U b) {{ a + b }; { b + a }; }; // T U 支持相加
+
+template<typename T>
+concept check2 = requires(T a){
+    { *a }; // *a 有意义
+    { a + 1 } -> std::same_as<T>; // a + 1 有意义，且相加后类型不变。
+    { std::same_as<decltype((a * a)), T> }; //
+};
 ```
 

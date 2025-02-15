@@ -55,6 +55,7 @@ M& HashMap<K, M, H>::operator[](const K& key) {
 但如果所有常量都设置到位了，就不会产生编译错误。最后我们的测试结果是：
 ![image.png](https://cdn.nlark.com/yuque/0/2024/png/43291115/1722183874362-98fd55bb-54e0-45ff-bafa-82ebb8d94de1.png#averageHue=%232c2a27&clientId=ud089ab67-ed95-4&from=paste&height=44&id=u33ff9d72&originHeight=66&originWidth=827&originalType=binary&ratio=1.5&rotation=0&showTitle=false&size=14556&status=done&style=none&taskId=ub3276c76-8a7a-425a-bf3b-190083eec3e&title=&width=551.3333333333334)
 OK，说明我们的 const 检查没有问题。
+
 ## 拷贝和移动语义
 一个良构的 STL 容器必须写好特殊的成员函数，例如以下几类：
 

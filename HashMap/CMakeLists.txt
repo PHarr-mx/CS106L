@@ -1,10 +1,3 @@
-#cmake_minimum_required(VERSION 3.30)
-#project(HashMap)
-#
-#set(CMAKE_CXX_STANDARD 17)
-#
-#add_executable(HashMap main.cpp)
-
 cmake_minimum_required(VERSION 3.30)
 project(HashMap)
 
