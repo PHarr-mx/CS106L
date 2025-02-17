@@ -82,3 +82,134 @@ const M &HashMap<K, M, H>::at(const K &key) const {
 }
 ```
 
+下一个需要重载的函数是
+
+```cpp
+iterator find(const K &key);
+```
+
+重载为
+
+```cpp
+const_iterator find(const K &key) const;
+```
+
+函数实现为
+
+```cpp
+template<typename K, typename M, typename H>
+typename HashMap<K, M, H>::const_iterator HashMap<K, M, H>::find(const K &key) const {
+    return static_cast<const_iterator>(const_cast<HashMap<K, M, H> *>(this)->find(key));
+}
+```
+
+
+
+# Milestone 2: Special Member Functions and Move Semantics
+
+去掉注释后，我发现原本可以正常编译的代码无法编译了。
+
+这是因为我们没有一些成员函数定义为`const`，我把`size(),empty(),load_factor(),bucket_count(),contains()`的定义修改后就可以正常运行。
+
+我们需要实现以下四个函数
+
+## 拷贝构造函数
+
+函数定义
+
+```cpp
+HashMap(const HashMap &other);
+```
+
+函数实现
+
+`HashMap` 有三个变量，分别是`_size`内部元素个数，`_hash_function`哈希函数，`_buckets_array`桶数组。哈希函数不变很好理解。对于元素的值，我们不能直接拷贝桶数组，这样会直接指向原始的对象，并不会拷贝对象。因此我可以新建全部为`nullptr`的桶数组，并把个数设为零，然后逐个把元素插入到新的`HashMap`就好。
+
+```cpp
+template<typename K, typename M, typename H>
+HashMap<K, M, H>::HashMap(const HashMap<K, M, H> &other)
+        :_size(0), _hash_function(other._hash_function),
+         _buckets_array(other.bucket_count(), nullptr) {
+    for (const_iterator iter = other.begin(); iter != other.end(); iter++) {
+        this->insert(*iter);
+    }
+}
+
+```
+
+## 拷贝赋值函数
+
+函数定义
+
+```cpp
+HashMap &operator=(const HashMap &other);
+```
+
+函数实现
+
+首先我们要判断左值和右值是否是一个对象，如果不是一个对象才需要进行赋值。
+
+如果要赋值，则首先应该把左值都清空。然后应当把左值的哈希函数赋值为右值的哈希函数。
+
+要注意此时左值和右值的桶数组大小可能是不同的，我们要注意把桶的大小对应上。
+
+最后把右值的值逐个插入即可。
+
+```cpp
+template<typename K, typename M, typename H>
+HashMap<K, M, H> &HashMap<K, M, H>::operator=(const HashMap<K, M, H> &other) {
+    if (this != &other) {
+        this->clear();
+        this->_hash_function = other._hash_function;
+        this->_buckets_array.resize(other._buckets_array.size(), nullptr);
+        for (const_iterator iter = other.begin(); iter != other.end(); iter++) {
+            this->insert(*iter);
+        }
+    }
+    return *this;
+}
+```
+
+## 移动构造函数
+
+函数定义
+
+```cpp
+HashMap(HashMap &&other);
+```
+
+因为全部都是对象，所以其实我们直接初始话列表加`std::move`就能解决
+
+```cpp
+template<typename K, typename M, typename H>
+HashMap<K, M, H>::HashMap(HashMap<K, M, H> &&other)
+        :_size(std::move(other._size)),
+         _hash_function(std::move(other._hash_function)),
+         _buckets_array(std::move(other._buckets_array)) {}
+```
+
+## 移动赋值函数
+
+函数定义
+
+```cpp
+HashMap &operator=(HashMap &&other);
+```
+
+函数实现
+
+整体思路与移动构造函数很接近
+
+```cpp
+template<typename K, typename M, typename H>
+HashMap<K, M, H> &HashMap<K, M, H>::operator=(HashMap<K, M, H> &&other) {
+    if (this != &other) {
+        this->clear();
+        this->_size = std::move(other._size);
+        this->_hash_function = std::move(other._hash_function);
+        this->_buckets_array = std::move(other._buckets_array);
+    }
+    return *this;
+}
+```
+

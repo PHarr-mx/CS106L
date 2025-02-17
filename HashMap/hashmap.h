@@ -126,7 +126,7 @@ public:
     explicit HashMap(size_t bucket_count, const H &hash = H());
 
     /*
-    * Destructor.
+    * Destructor. 析构函数
     *
     * Usage: (implicitly called when HashMap goes out of scope)
     *
@@ -148,7 +148,7 @@ public:
     *
     * Complexity: O(1) (inlined because function is short)
     */
-    inline size_t size();
+    const inline size_t size() const;
 
     /*
     * Returns whether the HashMap is empty.
@@ -161,11 +161,11 @@ public:
     *
     * Complexity: O(1) (inlined because function is short)
     */
-    inline bool empty();
+    const inline bool empty() const;
 
     /*
     * Returns the load_factor, defined as size/bucket_count.
-    *
+    * 返回负载因子，定义为 size/bucket_count。
     * Parameters: none
     * Return value: float
     *
@@ -176,8 +176,9 @@ public:
     *
     * Notes: our minimal implementation does not automatically rehash when the load
     * factor is too high. If you want as an extension, you can implement automatic rehashing.
+     * 注意：我们的最小实现不会在负载因子过高时自动重新哈希。如果你想扩展功能，可以实现自动重新哈希。
     */
-    inline float load_factor();
+    const inline float load_factor() const;
 
     /*
     * Returns the number of buckets.
@@ -198,7 +199,7 @@ public:
     * A noexcept function that throws an exception will automatically
     * terminate the program.
     */
-    inline size_t bucket_count() const;
+    const inline size_t bucket_count() const;
 
     /*
     * Returns whether or not the HashMap contains the given key.
@@ -216,7 +217,7 @@ public:
     * Since contains feels more natural to students who've used the Stanford libraries
     * and will be available in the future, we will implement map.contains(key).
     */
-    bool contains(const K &key);
+    const bool contains(const K &key) const;
 
     /*
     * Returns a l-value reference to the mapped value given a key.
@@ -256,6 +257,9 @@ public:
     * with those elements, but the HashMap should still be in a valid state and is
     * ready to be inserted again, as if it were a newly constructed HashMap with no elements.
     * The number of buckets should stay the same.
+    * 注意：clear 方法会移除 HashMap 中的所有元素，并释放与这些元素相关的内存，
+    * 但 HashMap 仍应处于有效状态，并且可以重新插入元素，就像一个新建且没有元素的 HashMap 一样。桶的数量应保持不变。
+    *
     */
     void clear();
 
@@ -273,6 +277,8 @@ public:
      * Complexity: O(1) amortized average case, O(N) worst case, N = number of elements
      */
     iterator find(const K &key);
+
+    const_iterator find(const K &key) const;
 
     /*
     * Inserts the K/M pair into the HashMap, if the key does not already exist.
@@ -463,6 +469,17 @@ public:
 
     /* Milestone 2 headers (you need to declare these) */
     // TODO: declare headers for copy constructor/assignment, move constructor/assignment
+    // 拷贝构造函数
+    HashMap(const HashMap &other);
+
+    // 拷贝赋值函数
+    HashMap &operator=(const HashMap &other);
+
+    // 移动构造函数
+    HashMap(HashMap &&other);
+
+    // 移动赋值函数
+    HashMap &operator=(HashMap &&other);
 
 private:
     /*
@@ -525,7 +542,7 @@ private:
     *
     * Hint: on the assignment, you should NOT need to call this function.
     */
-    node_pair find_node(const K &key) const;
+    const node_pair find_node(const K &key) const;
 
     /*
     * Finds the first bucket in _buckets_array that is non-empty.
@@ -565,7 +582,7 @@ private:
     /*
     * The array (vector) of buckets. Each bucket is a linked list,
     * and the item stored in the bucket is the front pointer of that linked list.
-    *
+    * 桶的数组（向量）。每个桶是一个链表，存储在桶中的项是该链表的头指针。
     * Usage:
     *      node* ptr = _buckets_array[index];          // _buckets_array is array of node*
     *      const auto& [key, mapped] = ptr->value;     // each node* contains a value that is a pair

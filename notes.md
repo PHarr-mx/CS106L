@@ -1651,3 +1651,224 @@ concept check2 = requires(T a){
 };
 ```
 
+# RAII
+
+## 内存泄漏的主要原因
+
+1. **手动管理失误**
+    - 使用 `new` 分配内存后，未调用 `delete` 释放。
+    - 数组未用 `delete[]` 释放，或错误使用 `free()` 释放 `new` 分配的内存。
+2. **异常或中断**
+    - 在 `delete` 前发生异常、`return` 或分支跳转，导致释放代码未执行。
+3. **循环引用（智能指针）**
+    - `shared_ptr` 互相引用时，引用计数无法归零，需结合 `weak_ptr` 解决。
+4. **未正确释放资源**
+    - 基类析构函数未声明为 `virtual`，导致派生类资源未释放。
+
+
+
+## 异常（Exception）
+
+异常是 C++ 中用于处理程序运行时错误的一种机制，允许程序在检测到错误时跳出当前执行流程，并通过特定代码块（`catch`）处理错误。其核心是 **分离正常逻辑与错误处理**，避免代码被大量错误检查污染。
+
+1. **`throw`**
+    - **抛出异常**：当检测到错误时，用 `throw` 抛出一个异常对象（可以是任意类型，但建议用标准异常类或自定义类）。
+    - 示例：`throw std::runtime_error("File not found");`
+
+1. **`try`**
+
+    - **监控代码块**：将可能抛出异常的代码包裹在 `try` 块中。
+
+    - 示例：
+
+        ```cpp
+        try {
+            // 可能抛出异常的代码
+            openFile("data.txt");
+        }
+        ```
+
+2. **`catch`**
+
+    - **捕获并处理异常**：根据异常类型匹配对应的 `catch` 块，执行错误处理逻辑。
+
+    - 示例:
+
+        ```cpp
+        catch (const std::runtime_error& e) {
+            std::cerr << "Error: " << e.what() << std::endl;
+        }
+        ```
+
+完整例子
+
+```cpp
+#include <iostream>
+#include <stdexcept>
+
+double divide(int a, int b) {
+    if (b == 0) {
+        throw std::invalid_argument("除数不能为0"); // 抛出异常
+    }
+    return static_cast<double>(a) / b;
+}
+
+int main() {
+    try {
+        double result = divide(10, 0); // 可能抛出异常的调用
+        std::cout << "结果: " << result << std::endl;
+    } catch (const std::invalid_argument &e) { // 捕获特定异常
+        std::cerr << "捕获异常: " << e.what() << std::endl;
+    } catch (...) { // 捕获所有其他异常
+        std::cerr << "未知错误" << std::endl;
+    }
+    return 0;
+}
+
+```
+
+- 异常类型匹配时`catch`按照顺序匹配异常类型，并支持继承关系，如捕获基类异常`std::exception`可处理所有派生类异常。
+
+- 抛出异常后，程序会逐层退出函数调用栈，直到找到匹配的 `catch` 块，同时自动调用局部对象的析构函数（需确保析构函数不抛异常）。
+
+- C++ 在`<stdexpect>`提供了标准异常类，可以用`what()`获取错误信息
+
+    - `logic_error` 程序逻辑错误
+
+    - `invalid_argument` 逻辑错误：无效参数
+
+    - `domain_error` 逻辑错误：参数对应的结果值不存在
+
+    - `length_error` 逻辑错误：试图创建一个超出该类型最大长度的对象
+
+    - `out_of_range` 逻辑错误：使用一个超出有效范围的值
+
+    - `runtime_error` 运行时错误
+
+    - `range_error` 运行时错误：生成的结果超出了有效值的范围
+
+    - `overflow_error` 运行时错误：计算上溢
+
+    - `underflow_error` 运行时错误：计算下溢
+
+## 异常安全
+
+函数可以具有四个级别的异常安全：
+
+- **不抛异常保证（Nothrow exception guarantee）**
+    - 绝对不会抛出异常：析构函数、交换操作、移动构造函数等。
+- **强异常安全保证（Strong exception guarantee）**
+    - 回滚到函数调用之前的状态。
+- **基本异常安全保证（Basic exception guarantee）**
+    - 异常后程序处于有效状态。
+- **无异常保证（No exception guarantee）**
+    - 资源泄漏、内存损坏、严重错误等。
+
+## RAII
+
+RAII 的核心思想是将资源的获取与对象的构造绑定在一起，而资源的释放则与对象的析构绑定在一起。当对象超出作用域时，析构函数会自动被调用，从而释放资源。这种机制可以确保即使在发生异常的情况下，资源也能被正确释放。
+
+```cpp
+void printFile() {
+    ifstream input;
+    input.open("hamlet.txt");
+    string line;
+    while (getline(input, line))
+        std::cout << line << std::endl;
+    input.close();
+}
+```
+
+这样的一段代码就不符合RAII，因为获取资源和释放资源都是通过条用函数实现的，如果在中间出现了异常，则`input.close()`将无法正常执行。
+
+```cpp
+void printFile() {
+    ifstream input("hamlet.txt");
+    string line;
+    while (getline(input, line))
+        std::cout << line << std::endl;
+}
+```
+
+其实只要这样修改就可以满足RAII了
+
+## 智能指针
+
+```cpp
+void foo() {
+    Node *n = new Node();
+    // do somthing
+    delete n;
+}
+```
+
+我们看这个函数，实际上这里的指针是不符合RAII的。如何解决这个问题？我们可以用智能指针实现，智能指针实际上就是一个类，我们用构造函数获取资源，在用析构函数释放资源。
+
+C++ 的标准库中已经准备了三种智能指针
+
+```cpp
+std::unique_ptr;
+std::shared_ptr;
+std::weak_ptr;
+```
+
+`std::unique_ptr` 不允许被复制，因为复制会导致一个资源不被唯一占用，还可能会导致资源被重复释放产生安全漏洞。
+
+对于刚才的例子，用智能指针实现也很简单。
+
+```cpp
+void foo1() {
+    std::unique_ptr<Node> n(new Node);
+    // do somthing
+    // free!
+}
+```
+
+如果确实需要复制指针，或者说确实需要多个指针指向一个对象，我们可以用`std::shared_prt`
+
+```cpp
+{
+    std::shared_ptr<int> p1(new int);
+    // use p1
+    {
+        std::shared_ptr<int> p2(p1);
+        std::shared_ptr<int> p3 = p2;
+        // use p1, p2, p3
+    }
+    // use p1
+}
+// free
+```
+
+只有当指向一个对象所有的共享指针都离开了作用域时，这个对象才会被释放。
+
+共享指针是如何实现的？对于同一个对象，共享指针维护了一个**引用计数器**，每拷贝一次计数器就会加一，每一个指针离开作用域计数器就会减一。当计数器为0时就会释放资源。
+
+对于`std::week_ptr`他和`std::shared_ptr`比较类似，但是当他增加时，并不会使得引用计数器加一。
+
+### 相同点
+
+| 特性                 | 说明                                                      |
+| :------------------- | :-------------------------------------------------------- |
+| **自动释放内存**     | 离开作用域时自动释放资源，避免内存泄漏。                  |
+| **支持自定义删除器** | 可通过模板参数指定删除器（如 `unique_ptr<T, Deleter>`）。 |
+| **操作符重载**       | 支持 `operator*` 和 `operator->`，行为类似裸指针。        |
+| **RAII原则**         | 资源生命周期与对象绑定，确保异常安全。                    |
+
+###  不同点
+
+| 特性             | `unique_ptr`                 | `shared_ptr`                          | `weak_ptr`                       |
+| :--------------- | :--------------------------- | :------------------------------------ | :------------------------------- |
+| **所有权**       | 独占资源                     | 共享资源                              | 不拥有资源                       |
+| **拷贝语义**     | 不可拷贝，只能移动           | 可拷贝，引用计数递增                  | 可拷贝，但引用计数不变           |
+| **引用计数**     | 无                           | 有（`use_count()`）                   | 无（但依赖 `shared_ptr` 的计数） |
+| **性能开销**     | 无                           | 有（原子操作维护引用计数）            | 低（仅观察）                     |
+| **循环引用问题** | 无                           | 可能导致循环引用（需配合 `weak_ptr`） | 用于解决循环引用                 |
+| **典型使用场景** | 独占动态对象、工厂模式返回值 | 共享资源（如缓存、多线程数据）        | 观察者模式、打破循环引用         |
+
+### 选择指南
+
+- **优先使用 `unique_ptr`**：资源无需共享时，优先选择（性能最优）。
+- **共享资源用 `shared_ptr`**：需要多个所有者时使用，但需注意循环引用风险。
+- **观察资源用 `weak_ptr`**：配合 `shared_ptr` 使用，避免循环引用。
+

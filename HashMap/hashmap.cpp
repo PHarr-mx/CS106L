@@ -21,22 +21,22 @@ HashMap<K, M, H>::~HashMap() {
 }
 
 template<typename K, typename M, typename H>
-inline size_t HashMap<K, M, H>::size() {
+const inline size_t HashMap<K, M, H>::size() const {
     return _size;
 }
 
 template<typename K, typename M, typename H>
-inline bool HashMap<K, M, H>::empty() {
+const inline bool HashMap<K, M, H>::empty() const {
     return size() == 0;
 }
 
 template<typename K, typename M, typename H>
-inline float HashMap<K, M, H>::load_factor() {
+const inline float HashMap<K, M, H>::load_factor() const {
     return static_cast<float>(size()) / bucket_count();
 };
 
 template<typename K, typename M, typename H>
-inline size_t HashMap<K, M, H>::bucket_count() const {
+const inline size_t HashMap<K, M, H>::bucket_count() const {
     return _buckets_array.size();
 };
 
@@ -51,11 +51,11 @@ M &HashMap<K, M, H>::at(const K &key) {
 
 template<typename K, typename M, typename H>
 const M &HashMap<K, M, H>::at(const K &key) const {
-    return static_cast<const M&>(const_cast<HashMap<K, M, H> *>(this)->at(key));
+    return static_cast<const M &>(const_cast<HashMap<K, M, H> *>(this)->at(key));
 }
 
 template<typename K, typename M, typename H>
-bool HashMap<K, M, H>::contains(const K &key) {
+const bool HashMap<K, M, H>::contains(const K &key) const {
     return find_node(key).second != nullptr;
 }
 
@@ -72,6 +72,11 @@ void HashMap<K, M, H>::clear() {
 template<typename K, typename M, typename H>
 typename HashMap<K, M, H>::iterator HashMap<K, M, H>::find(const K &key) {
     return make_iterator(find_node(key).second);
+}
+
+template<typename K, typename M, typename H>
+typename HashMap<K, M, H>::const_iterator HashMap<K, M, H>::find(const K &key) const {
+    return static_cast<const_iterator>(const_cast<HashMap<K, M, H> *>(this)->find(key));
 }
 
 template<typename K, typename M, typename H>
@@ -92,7 +97,7 @@ std::pair<typename HashMap<K, M, H>::iterator, bool> HashMap<K, M, H>::insert(co
 }
 
 template<typename K, typename M, typename H>
-typename HashMap<K, M, H>::node_pair HashMap<K, M, H>::find_node(const K &key) const {
+const typename HashMap<K, M, H>::node_pair HashMap<K, M, H>::find_node(const K &key) const {
     size_t index = _hash_function(key) % bucket_count();
     node *curr = _buckets_array[index];
     node *prev = nullptr; // if first node is the key, return {nullptr, front}
@@ -257,5 +262,42 @@ std::ostream &operator<<(std::ostream &os, const HashMap<K, M, H> &rhs) {
 }
 
 /* Begin Milestone 2: Special Member Functions */
+template<typename K, typename M, typename H>
+HashMap<K, M, H>::HashMap(const HashMap<K, M, H> &other)
+        :_size(0), _hash_function(other._hash_function),
+         _buckets_array(other.bucket_count(), nullptr) {
+    for (const_iterator iter = other.begin(); iter != other.end(); iter++) {
+        this->insert(*iter);
+    }
+}
 
+template<typename K, typename M, typename H>
+HashMap<K, M, H> &HashMap<K, M, H>::operator=(const HashMap<K, M, H> &other) {
+    if (this != &other) {
+        this->clear();
+        this->_hash_function = other._hash_function;
+        this->_buckets_array.resize(other._buckets_array.size(), nullptr);
+        for (const_iterator iter = other.begin(); iter != other.end(); iter++) {
+            this->insert(*iter);
+        }
+    }
+    return *this;
+}
+
+template<typename K, typename M, typename H>
+HashMap<K, M, H>::HashMap(HashMap<K, M, H> &&other)
+        :_size(std::move(other._size)),
+         _hash_function(std::move(other._hash_function)),
+         _buckets_array(std::move(other._buckets_array)) {}
+
+template<typename K, typename M, typename H>
+HashMap<K, M, H> &HashMap<K, M, H>::operator=(HashMap<K, M, H> &&other) {
+    if (this != &other) {
+        this->clear();
+        this->_size = std::move(other._size);
+        this->_hash_function = std::move(other._hash_function);
+        this->_buckets_array = std::move(other._buckets_array);
+    }
+    return *this;
+}
 /* end student code */
