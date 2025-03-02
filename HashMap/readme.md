@@ -105,7 +105,7 @@ typename HashMap<K, M, H>::const_iterator HashMap<K, M, H>::find(const K &key) c
 
 
 
-# Milestone 2: Special Member Functions and Move Semantics
+## Milestone 2: Special Member Functions and Move Semantics
 
 去掉注释后，我发现原本可以正常编译的代码无法编译了。
 
@@ -113,7 +113,7 @@ typename HashMap<K, M, H>::const_iterator HashMap<K, M, H>::find(const K &key) c
 
 我们需要实现以下四个函数
 
-## 拷贝构造函数
+### 拷贝构造函数
 
 函数定义
 
@@ -137,7 +137,7 @@ HashMap<K, M, H>::HashMap(const HashMap<K, M, H> &other)
 
 ```
 
-## 拷贝赋值函数
+### 拷贝赋值函数
 
 函数定义
 
@@ -170,7 +170,7 @@ HashMap<K, M, H> &HashMap<K, M, H>::operator=(const HashMap<K, M, H> &other) {
 }
 ```
 
-## 移动构造函数
+### 移动构造函数
 
 函数定义
 
@@ -188,7 +188,7 @@ HashMap<K, M, H>::HashMap(HashMap<K, M, H> &&other)
          _buckets_array(std::move(other._buckets_array)) {}
 ```
 
-## 移动赋值函数
+### 移动赋值函数
 
 函数定义
 
@@ -213,3 +213,133 @@ HashMap<K, M, H> &HashMap<K, M, H>::operator=(HashMap<K, M, H> &&other) {
 }
 ```
 
+## 源码阅读
+
+主要是阅读`hashmap.h`和`hashmap.cpp`。
+
+首先`HashMap`类用到了三种类型`K,M,H`分别表示键、值、哈希函数。并且把`pair<const K, M>`定义为`value_type`。
+
+### 成员变量
+
+这个哈希表是拉链法实现的，所以定义一个这样的类
+
+```cpp
+struct node {
+        value_type value;
+        node *next;
+        node(const value_type &value = value_type(), node *next = nullptr) :
+                value(value), next(next) {}
+    };
+```
+
+用来记录每个节点的值，和节点指向的下一个点。
+
+然后定义了三个成员变量，`_size, _hash_function,_buckets_array`。分别表示哈希表类元素的个数，哈希函数，头指针。
+
+### `HashMap()`
+
+除了默认构造函数外，他实现了一个
+
+```cpp
+explicit HashMap(size_t bucket_count, const H &hash = H());
+```
+
+这个函数指定了初始桶的大小，并且让桶内全部是`nullptr`
+
+### `~HashMap()`
+
+只采用默认的析构函数。
+
+### `size()`
+
+返回哈希表的大小。就是返回`_size`
+
+### `empty()`
+
+判断哈希表是否为空，返回`size() == 0`
+
+### `bucket_count()`
+
+桶的大小，返回`_buckets_array.size()`
+
+### `find_node(const K &key)`
+
+首先定义了一个`using node_pair = pair<node*,node*>`用来储存一堆点的指针。
+
+这个函数是给定一个`key`，找到这个`key`对应的键值对`n`，并返回`n`的前驱和`n`两个点的指针。如果找不到返回`<nullprt,nullptr>`。
+
+为什么还需要前驱？因为当指向删除操作时，需要把`n`前驱的后继指向`n`的后继。
+
+如何实现？本质时先找到`key`对应的`index`，再遍历桶中`index`的链。
+
+### `contains(const K &key)`
+
+判断键是否存在于`hashmap`中，返回`find_node(key).second != nullptr`
+
+### `at(const K &key)`
+
+找到`key`对应的值。
+
+重载了两个版本
+
+```cpp
+M &at(const K &key);
+const M &at(const K &key) const;
+```
+
+实现方法，用`find_node`查找对应的键值对。
+
+### `clear()`
+
+清空hashmap，遍历每一条链，然后不断的把链头指向后继，直到链头为`nullptr`。
+
+### `make_iterator(node *curr);`
+
+根据指针找到对应的迭代器。
+
+这里讲一下迭代器如何实现的。
+
+其实很简单，迭代器主要用三个成员变量
+
+```cpp
+bucket_array_type* _buckets_array; // 指向桶数组
+node* _node; // 指向当前节点
+size_t _bucket; // 记录当前节点在哪个桶中。
+```
+
+然后每次可以根据`node->next`找到下一个点，如果下一个点是`nullptr`说明当前的链变量完了，要遍历下一个链，如果所有的链都遍历完了，则hashmap遍历完了。
+
+因此这个迭代器实际上只是`Forward  Iterator`。
+
+所以我们只要根据值找到对应的桶数组和下标再遍历一下链找到`key`就好了。
+
+### `find(const K &key)`
+
+找到`key`对应的键值对，并返回指向键值对的迭代器。重载了两个版本。
+
+```cpp
+iterator find(const K &key);
+const_iterator find(const K &key) const;
+```
+
+实现方法，用`find_node`找到点，然后用`make_iterator`返回迭代器。
+
+### `insert(const value_type &value)`
+
+插入值，根据`value.first`计算出哈希值，然后找到对应的桶数组把这个值插到末尾即可。最后`++_size`。
+
+### `erase(const K &key)`
+
+用`find_node`找到点，然后把前驱后继接起来。
+
+### `erase(const_iterator pos)`
+
+因为要返回删除后点，所有我们可以先向后走一步，再删除前驱节点。
+
+### `begin()`
+
+遍历桶数组，找到第一个非空的链，返回链头的迭代器。
+
+### `end()`
+
+返回`nullptr`的迭代器。

@@ -519,28 +519,27 @@ private:
     using node_pair = std::pair<typename HashMap::node *, typename HashMap::node *>;
 
     /*
-    * Finds the node N with given key, and returns a node_pair consisting of
-    * the node whose's next is N, and N. If node is not found, {nullptr, nullptr}
-    * is returned. If node found is the first in the list, {nullptr, node} is returned.
+    * 查找具有给定键的节点N，并返回一个由前驱节点和当前节点组成的node_pair。
+    * 如果未找到节点，则返回{nullptr, nullptr}。如果找到的节点是链表中的第一个节点，
+    * 则返回{nullptr, node}。
     *
-    * Example given list: front -> [A] -> [B] -> [C] -> /
-    * where A, B, C, D are pointers, then
+    * 示例：给定链表 front -> [A] -> [B] -> [C] -> /
+    * 其中A、B、C、D为指针，则
     *
-    * find_node(A_key) = {nullptr, A}
-    * find_node(B_key) = {A, B}
-    * find_node(C_key) = {B, C}
-    * find_node(D_key) = {nullptr, nullptr}
+    * find_node(A键) = {nullptr, A}
+    * find_node(B键) = {A, B}
+    * find_node(C键) = {B, C}
+    * find_node(D键) = {nullptr, nullptr}
     *
-    * Usage:
-    *      auto& [prev, curr] = find_node(3);
-    *      if (prev == nullptr) { ... }
+    * 用法：
+    * auto& [prev, curr] = find_node(3);
+    * if (prev == nullptr) { ... }
     *
-    * Complexity: O(1) amortized average case, O(N) worst case, N = number of elements
+    * 复杂度：分摊平均情况 O(1)，最坏情况 O(N)，其中N为元素数量
     *
-    * Notes: this function is necessary because when erasing, we need to change the
-    * next pointer of the node before the one we are erasing.
+    * 备注：此函数是必要的，因为在执行删除操作时，我们需要修改目标节点的前驱节点的next指针。
     *
-    * Hint: on the assignment, you should NOT need to call this function.
+    * 提示：在作业中，你不需要调用此函数。
     */
     const node_pair find_node(const K &key) const;
 
